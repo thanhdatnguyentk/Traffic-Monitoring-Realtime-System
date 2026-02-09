@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 class CameraBase(BaseModel):
     name: str
@@ -17,3 +17,24 @@ class CameraResponse(CameraBase):
 
     class Config:
         from_attributes = True
+
+
+class TrafficLogResponse(BaseModel):
+    id: int
+    camera_id: int
+    timestamp: datetime
+    car_count: int
+    motorcycle_count: int
+    bus_count: int
+    truck_count: int
+    total_count: int
+    flow_rate: float
+
+    class Config:
+        from_attributes = True
+
+
+class HourlyTrafficData(BaseModel):
+    hour: str
+    vehicles: int
+

@@ -11,6 +11,9 @@ const DashboardView = () => {
   
   // Real-time Stats
   const [stats, setStats] = useState({ car: 0, motorcycle: 0, bus: 0, truck: 0 });
+  
+  // Weekly Traffic Data (from API)
+  const [weeklyData, setWeeklyData] = useState([]);
 
   // Form State
   const [newCamera, setNewCamera] = useState({
@@ -18,17 +21,6 @@ const DashboardView = () => {
       source_url: '',
       location: ''
   });
-
-  // Dummy data for Weekly Trends (keep for now as backend doesn't store historical data yet)
-  const weeklyData = [
-    { name: 'Mon', vehicles: 4000 },
-    { name: 'Tue', vehicles: 3000 },
-    { name: 'Wed', vehicles: 2000 },
-    { name: 'Thu', vehicles: 2780 },
-    { name: 'Fri', vehicles: 1890 },
-    { name: 'Sat', vehicles: 2390 },
-    { name: 'Sun', vehicles: 3490 },
-  ];
   
   const pieData = [
     { name: 'Automobiles', value: stats.car + stats.truck + stats.bus },
@@ -52,7 +44,19 @@ const DashboardView = () => {
 
   useEffect(() => {
     fetchCameras();
+    fetchWeeklyData();
   }, []);
+
+  // Fetch weekly traffic data
+  const fetchWeeklyData = () => {
+    axios.get('http://localhost:8000/traffic/daily')
+      .then(res => {
+        if (res.data && res.data.length > 0) {
+          setWeeklyData(res.data);
+        }
+      })
+      .catch(err => console.error("Error fetching weekly data:", err));
+  };
 
   // Poll for stats
   useEffect(() => {
@@ -64,7 +68,13 @@ const DashboardView = () => {
               .catch(err => console.error("Error fetching stats:", err));
       }, 1000); // Update every 1 second
 
-      return () => clearInterval(interval);
+      // Also refresh weekly data every 30 seconds
+      const weeklyInterval = setInterval(fetchWeeklyData, 30000);
+
+      return () => {
+        clearInterval(interval);
+        clearInterval(weeklyInterval);
+      };
   }, [activeCameraId]);
 
   const handleAddCamera = async (e) => {
@@ -219,19 +229,32 @@ const DashboardView = () => {
 
        {/* Bottom Charts */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
-         <h3 className="text-gray-500 text-sm font-medium mb-4 uppercase tracking-wider">Weekly Traffic Trends</h3>
-         <ResponsiveContainer width="100%" height="100%">
-           <BarChart data={weeklyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
-             <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-             <Tooltip 
-                cursor={{fill: '#f9fafb'}} 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-             />
-             <Bar dataKey="vehicles" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
-           </BarChart>
-         </ResponsiveContainer>
+         <div className="flex justify-between items-center mb-4">
+           <h3 className="text-gray-500 text-sm font-medium uppercase tracking-wider">Weekly Traffic Trends</h3>
+           <span className="text-xs text-gray-400">Live data • Updates every 30s</span>
+         </div>
+         {weeklyData.length > 0 ? (
+           <ResponsiveContainer width="100%" height="90%">
+             <BarChart data={weeklyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
+               <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+               <Tooltip 
+                  cursor={{fill: '#f9fafb'}} 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+               />
+               <Bar dataKey="vehicles" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+             </BarChart>
+           </ResponsiveContainer>
+         ) : (
+           <div className="h-full flex items-center justify-center text-gray-400">
+             <div className="text-center">
+               <Activity className="mx-auto mb-2" size={32} />
+               <p className="text-sm">No traffic data yet</p>
+               <p className="text-xs mt-1">Data will appear as vehicles are detected</p>
+             </div>
+           </div>
+         )}
       </div>
 
       {/* Add Camera Modal */}
